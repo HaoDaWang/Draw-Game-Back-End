@@ -81,43 +81,6 @@ router.post('/getUser/:id',(req,res) => {
     })();
 });
 
-//添加好友
-router.post('/addFriend',(req,res) => {
-    res.send({})
-    // (async function(){
-    //     //查询是否有此好友
-    //     let findResult:any = await find(usersModel,{user:req.body.user});
-    //     let arr = findResult.successful[0].friends;
-    //     for(let val of arr){
-    //         if(val == req.body.targetUser){
-    //             res.send({err:"已经添加过此好友"});
-    //             return;
-    //         }
-    //     }
-        
-        // //发送给指定用户请求
-        // sendMsg(
-        //     req.body.targetUser,
-        //     req.body.user,
-        //     req.body.msg,
-        //     "addFriend"
-        // )
-
-        // //查询JSON
-        // let queryJSON = {
-        //     "user":req.body.user
-        // };
-        // //更新JSON
-        // let updateJSON = {
-        //     $push:{
-        //         friends:{"user":req.body.targetUser}
-        //     }
-        // };
-        // let result = await update(usersModel,queryJSON,updateJSON);
-        // res.send({successful:result});
-    // })();
-});
-
 //双方添加好友
 //等待对方确认过之后 双方都添加好友
 //添加好友
