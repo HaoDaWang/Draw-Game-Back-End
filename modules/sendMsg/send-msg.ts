@@ -9,7 +9,7 @@ import { userMap } from "../userMap/userMap";
  * @return 是否执行成功
  */
 
-export let sendMsg = function(targetUsername:string,username:string, body:string, tag:string):boolean{
+export let sendMsg = function(targetUsername:string,username:string, body:any, tag:string):boolean{
     let map = userMap.getUserMap()
     let user = map.get(targetUsername)
     if(!user) return false

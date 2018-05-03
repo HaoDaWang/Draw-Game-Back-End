@@ -7,11 +7,18 @@ import { ReturnData } from '../interfaces/return-data.interface';
 import { add } from '../modules/mongoose/CURD/add';
 import { update } from '../modules/mongoose/CURD/update';
 import { remove } from '../modules/mongoose/CURD/remove';
-import { GameQuestion } from '../modules/gameQuestion/game-question';
+import { gq } from '../modules/gameQuestion/game-question';
 import { organizeManager as organize } from '../modules/organize/organize';
 import { sendMsg } from '../modules/sendMsg/send-msg';
 import { addFriend } from '../modules/addFriend/addFriend';
-const gameQuestion:GameQuestion = new GameQuestion();
+import { upload } from '../modules/upload/upload';
+import { Config } from '../interfaces/config.type';
+import { removeFile } from '../modules/removeFile/removeFile';
+import { match } from '../modules/match/match';
+import { userMap } from '../modules/userMap/userMap';
+import { readyQueue } from '../modules/readyQueue/readyQueue';
+const config:Config = require("../modules/config/config.json")
+const gameQuestion = gq
 const router:Router = express.Router();
 
 //模块目录
@@ -107,14 +114,6 @@ router.post('/sendMsg',(req,res) => {
     res.send({})
 });
 
-
-// router.post("sendMsg",(req,res) => {
-//     
-
-//     //结束响应
-//     res.send({})
-// })
-
 //根据朋友列表ID查询好友全部信息
 router.post("/getFriendList",(req,res) => {
     let friendList = req.body.friendList;
@@ -171,8 +170,99 @@ router.post("/setFreeState",(req,res) => {
     })();
 });
 
+//获取指定用户信息
+router.post("/getUserInfo",(req, res) => {
+    (async function(){
+        let result:{successful?:any, err?:any} = await find(usersModel,{user:req.body.user},{_id:0,passw:0});
+        if(result.err) {
+            console.log(result.err)
+            res.send(result)
+            return
+        }
+
+        //屏蔽密码访问
+        // delete result.successful["passw"]     
+        res.send(result)
+        return
+    })()
+})
+
+//上传用户头像
+router.post("/uploadHeadImg",upload("headImg").single("headImg") as any,(req, res) => {
+    console.log(req.file);
+    //获取当前用户的头像路径
+        (async function(){
+            try{
+                let result = await find(usersModel,{user:req.body.user},{_id:0, headImg:1})
+                let defaultHeadImg = result.successful[0].headImg
+                //判断是否为默认头像路径， 如果不是则删除
+                if(config.defaultHeadImg.indexOf(defaultHeadImg) == -1){
+                    await removeFile(path.resolve("public" + defaultHeadImg))
+                } 
+                //更新用户头像
+                await update(usersModel,{user:req.body.user},{headImg:req.file.path.substring(6,req.file.path.length)})
+                res.send({successful:"上传成功"})
+            }
+            catch(e){
+                console.log(e.stack)
+                res.send({end:"上传失败"})
+            }
+        })()
+})
+
+//保存用户信息
+router.post("/saveUserInfo",(req, res) => {
+    let obj = req.body
+    let user = req.body.user
+    delete obj['user'];
+    //更新用户信息
+    (async function(){
+        try{
+            await update(usersModel,{user:user},obj)
+            res.send({successful:"保存成功"})
+        }
+        catch(e){
+            console.log(e.stack)
+            res.send({err:"保存失败"})
+        }
+    })()
+})
+
+//更新准备队列
+router.post("/updateReadyQueue",(req, res) => {
+    let user = req.body.user
+
+    //更新准备队列
+    let q = readyQueue.getQueue()
+    for(let obj of q){
+        if(obj.user == user){
+            obj.isReady = true
+            break
+        }
+    }
+    //广播
+    for(let s of readyQueue.getSocketQueue()){
+        s.emit("userMsg",{
+            msg:{
+                username:"",
+                body:q
+            },
+            tag:"readyQueue"
+        })
+    }
+
+    match.userReady()
+    res.end()
+})
+
+//将用户从匹配队列中删除
+router.post("/removeUserToMatch",(req, res) => {
+    match.removeUser(req.body.user)
+    res.end()
+})
+
 router.get("/",(req,res) => {
-    res.render('index', { title: 'Express' });
+    res.render('index', { title: '欢迎来到火星' });
 });
 
 export = router;
