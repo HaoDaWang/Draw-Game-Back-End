@@ -17,9 +17,34 @@ import { removeFile } from '../modules/removeFile/removeFile';
 import { match } from '../modules/match/match';
 import { userMap } from '../modules/userMap/userMap';
 import { readyQueue } from '../modules/readyQueue/readyQueue';
+import { Organize2 } from '../modules/organize2/organize2';
+import { organize2Pool } from '../modules/organize2/organize2pool';
 const config:Config = require("../modules/config/config.json")
 const gameQuestion = gq
 const router:Router = express.Router();
+
+//从队伍中添加或删除成员
+function addAndRemove(req:express.Request, tag:string){
+    let captain = req.body.captain
+    let targetUser = req.body.user
+    let organize2 = organize2Pool.getOrganize(captain.user)
+    if(organize2){ 
+        if (tag == "add") organize2.addUser(targetUser)
+        else organize2.removeUser(targetUser)
+        organize2Pool.addOrganize(organize2)
+    }
+    else organize2 = undefined
+    return organize2
+}
+
+//广播所有队伍中的成员，更新队伍
+function organize2Boardcast(organize2:Organize2, isIncludeMyself:boolean, user:string, body:any, tag:string){
+    let organizeArr = organize2.getOrganize()
+    for(let obj of organizeArr){
+        if(!isIncludeMyself && obj.user == user) continue
+        sendMsg(obj.user,"",body,tag)
+    }
+}
 
 //模块目录
 const modulePath = path.join("../","modules");
@@ -125,7 +150,11 @@ router.post("/getFriendList",(req,res) => {
         }
         for(let friend of friendList){
             user = await find(usersModel,{user:friend.user});
-            result.push({user:user.successful[0].user,isLine:user.successful[0].isLine});           
+            result.push({
+                user:user.successful[0].user,
+                isLine:user.successful[0].isLine,
+                headImg:user.successful[0].headImg
+            });           
         } 
         res.send({successful:result});
     })();
@@ -136,31 +165,31 @@ router.get('/getQuestion',(req,res) => {
     res.send({successful:gameQuestion.getQuestion()});
 });
 
-//队伍添加成员
-router.post('/addOrganizeUser',(req,res) => {
-    console.log(req.body.first,req.body.userName);
-    organize.addUser(req.body.first,req.body.userName);
-    console.log(`现在的组队数组形如 ： ${JSON.stringify(organize.organizes)}`);
-    res.send({successful:"添加成功"});
-});
+// //队伍添加成员
+// router.post('/addOrganizeUser',(req,res) => {
+//     console.log(req.body.first,req.body.userName);
+//     organize.addUser(req.body.first,req.body.userName);
+//     console.log(`现在的组队数组形如 ： ${JSON.stringify(organize.organizes)}`);
+//     res.send({successful:"添加成功"});
+// });
 
-//队伍删除成员
-router.post('/removeOrganizeUser',(req,res) => {
-    organize.removeUser(req.body.first,req.body.userName);
-    console.log(`现在的组队数组形如 ： ${JSON.stringify(organize.organizes)}`);
-    res.send({successful:"删除成功"});    
-})
+// //队伍删除成员
+// router.post('/removeOrganizeUser',(req,res) => {
+//     organize.removeUser(req.body.first,req.body.userName);
+//     console.log(`现在的组队数组形如 ： ${JSON.stringify(organize.organizes)}`);
+//     res.send({successful:"删除成功"});    
+// })
 
-//获取队伍信息
-router.post('/getOrganizeInfo',(req,res) => {
-    res.send({successful:organize.getOrganizes(req.body.first)});
-})
+// //获取队伍信息
+// router.post('/getOrganizeInfo',(req,res) => {
+//     res.send({successful:organize.getOrganizes(req.body.first)});
+// })
 
 //销毁队伍
-router.post('/dropOrganize',(req,res) => {
-     organize.dropOrganizes(req.body.first);
-     res.send({successful:"销毁成功"});
-});
+// router.post('/dropOrganize',(req,res) => {
+//      organize.dropOrganizes(req.body.first);
+//      res.send({successful:"销毁成功"});
+// });
 
 //设置用户空闲状态
 router.post("/setFreeState",(req,res) => {
@@ -261,8 +290,50 @@ router.post("/removeUserToMatch",(req, res) => {
     res.end()
 })
 
+
+router.post("/createOrganize2",(req, res) => {
+    let organize2 = new Organize2()
+    organize2.addUser(req.body.captain)
+    //添加队伍进队伍池
+    organize2Pool.addOrganize(organize2)
+    res.send({organize:organize2.getOrganize()})
+})
+
+//添加用户进队伍
+router.post("/addUserInOrganize2",(req, res) => {
+    console.log(`添加用户 ${req.body.user.user} 进入队伍`)
+    let organize = addAndRemove(req, "add")
+    console.log(organize)
+    if(organize){
+        organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
+        res.send({organize:organize.getOrganize()})
+    }
+    res.send({organize:[]})
+})
+//从队伍将用户删除
+router.post("/removeUserInOrganize2",(req, res) => {
+    console.log(`将用户 ${req.body.user.user} 从队伍中删除`)
+    let organize = addAndRemove(req, "remove")
+    if(organize) {
+        organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
+        res.send({organize:organize.getOrganize()})
+    }
+    res.send({organize:[]})
+})
+
+//销毁队伍
+router.post("/dropOrganize",(req, res) => {
+    console.log(`队长 ${req.body.user.user} 请求解散队伍`)
+    let user = req.body.user.user
+    let organize = organize2Pool.getOrganize(user)
+    if(organize) organize2Boardcast(organize,false,user,"dropOrganize","dropOrganize")
+    //将队伍从队伍池中删除
+    organize2Pool.removeOrganizeAsUser(req.body.user.user)
+    res.send()
+})
+
 router.get("/",(req,res) => {
-    res.render('index', { title: '欢迎来到火星' });
+    res.send("欢迎来到火星")
 });
 
 export = router;

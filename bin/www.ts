@@ -72,6 +72,11 @@ function userCanDraw(room:Room){
       else {
         s.emit("canDraw",false);
       }
+      //通知所有客户端更新画图者 给头像加边框
+      s.emit("validAnswerResult",{
+        user:findUserInMap(room.users[room.currentUser]),
+        tag:"updateDrawer"
+      })
     }
   }
   else{
