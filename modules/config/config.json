@@ -2,5 +2,9 @@
     "defaultHeadImg":[
         "/files/headImg/headImg.jpg"
     ],
-    "MATCH_COUNT":2 
+    "MATCH_COUNT":3, 
+    "MIN_POINT":15,
+    "MAX_TIME":3000,
+    "NEXT_GAME_TIME":3,
+    "PRODUCT_PATH":"/files/products/"
 }

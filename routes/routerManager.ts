@@ -7,20 +7,22 @@ import { ReturnData } from '../interfaces/return-data.interface';
 import { add } from '../modules/mongoose/CURD/add';
 import { update } from '../modules/mongoose/CURD/update';
 import { remove } from '../modules/mongoose/CURD/remove';
-import { gq } from '../modules/gameQuestion/game-question';
 import { organizeManager as organize } from '../modules/organize/organize';
 import { sendMsg } from '../modules/sendMsg/send-msg';
 import { addFriend } from '../modules/addFriend/addFriend';
 import { upload } from '../modules/upload/upload';
 import { Config } from '../interfaces/config.type';
 import { removeFile } from '../modules/removeFile/removeFile';
-import { match } from '../modules/match/match';
 import { userMap } from '../modules/userMap/userMap';
 import { readyQueue } from '../modules/readyQueue/readyQueue';
 import { Organize2 } from '../modules/organize2/organize2';
 import { organize2Pool } from '../modules/organize2/organize2pool';
+import { room } from '../modules/room/room';
+import { userCanDraw } from '../modules/userCanDraw/userCanDraw';
+import { productModel } from '../modules/mongoose/model/productModel';
+import { personPool } from '../modules/person/personPool';
+import { Room } from '../interfaces/room.interface';
 const config:Config = require("../modules/config/config.json")
-const gameQuestion = gq
 const router:Router = express.Router();
 
 //从队伍中添加或删除成员
@@ -162,34 +164,8 @@ router.post("/getFriendList",(req,res) => {
 
 //获取游戏问题
 router.get('/getQuestion',(req,res) => {
-    res.send({successful:gameQuestion.getQuestion()});
+    // res.send({successful:gameQuestion.getQuestion()});
 });
-
-// //队伍添加成员
-// router.post('/addOrganizeUser',(req,res) => {
-//     console.log(req.body.first,req.body.userName);
-//     organize.addUser(req.body.first,req.body.userName);
-//     console.log(`现在的组队数组形如 ： ${JSON.stringify(organize.organizes)}`);
-//     res.send({successful:"添加成功"});
-// });
-
-// //队伍删除成员
-// router.post('/removeOrganizeUser',(req,res) => {
-//     organize.removeUser(req.body.first,req.body.userName);
-//     console.log(`现在的组队数组形如 ： ${JSON.stringify(organize.organizes)}`);
-//     res.send({successful:"删除成功"});    
-// })
-
-// //获取队伍信息
-// router.post('/getOrganizeInfo',(req,res) => {
-//     res.send({successful:organize.getOrganizes(req.body.first)});
-// })
-
-//销毁队伍
-// router.post('/dropOrganize',(req,res) => {
-//      organize.dropOrganizes(req.body.first);
-//      res.send({successful:"销毁成功"});
-// });
 
 //设置用户空闲状态
 router.post("/setFreeState",(req,res) => {
@@ -260,33 +236,50 @@ router.post("/saveUserInfo",(req, res) => {
 //更新准备队列
 router.post("/updateReadyQueue",(req, res) => {
     let user = req.body.user
+    let roomID = req.body.roomID
 
     //更新准备队列
-    let q = readyQueue.getQueue()
-    for(let obj of q){
-        if(obj.user == user){
-            obj.isReady = true
-            break
-        }
+    let q = room.findRoom(roomID)
+    if(!q) throw new Error("准备队列：找不到指定roomID的room")
+    for(let obj of q.readyQueue){
+        if(obj.user == user) obj.isReady = true
     }
-    //广播
-    for(let s of readyQueue.getSocketQueue()){
+
+    for(let obj of q.readyQueue){
+        let s = userMap.getUserMap().get(obj.user)
+        if(!s) throw new Error("准备队列：找不到指定的socket")
         s.emit("userMsg",{
             msg:{
                 username:"",
-                body:q
+                body:{
+                    roomID:roomID,
+                    queue:q.readyQueue
+                }
             },
             tag:"readyQueue"
         })
     }
+    
+    //准备人数+1
+    q.readyIndex++
+    //全部准备
+    if(q.readyIndex == q.users.length){
+        //通知客户端匹配成功
+        for(let obj of q.readyQueue){
+            let s = userMap.getUserMap().get(obj.user)
+            if(!s) throw new Error("准备队列：找不到指定的socket")
+            s.emit("matchSuccessful",roomID);          
+        }
+    }
 
-    match.userReady()
+    // match.userReady()
     res.end()
 })
 
 //将用户从匹配队列中删除
 router.post("/removeUserToMatch",(req, res) => {
-    match.removeUser(req.body.user)
+    // match.removeUser(req.body.user)
+    personPool.removeUser(req.body.user)
     res.end()
 })
 
@@ -304,11 +297,9 @@ router.post("/addUserInOrganize2",(req, res) => {
     console.log(`添加用户 ${req.body.user.user} 进入队伍`)
     let organize = addAndRemove(req, "add")
     console.log(organize)
-    if(organize){
-        organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
-        res.send({organize:organize.getOrganize()})
-    }
-    res.send({organize:[]})
+    if(!organize) throw new Error("用户进入队伍：找不到该队伍")
+    organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
+    res.send({organize:organize.getOrganize()})
 })
 //从队伍将用户删除
 router.post("/removeUserInOrganize2",(req, res) => {
@@ -330,6 +321,109 @@ router.post("/dropOrganize",(req, res) => {
     //将队伍从队伍池中删除
     organize2Pool.removeOrganizeAsUser(req.body.user.user)
     res.send()
+})
+
+//修改积分
+router.post("/updatePoint",(req, res) => {
+    let pointValue = req.body.pointValue
+    let user = req.body.user
+    console.log(pointValue,user);
+    (async function(){
+        await update(usersModel,{user:user},{$inc:{point:pointValue}})
+        res.send({})
+    })()
+})
+//修改金币
+router.post("/updateMoney",(req, res) => {
+    let moneyValue = req.body.moneyValue
+    let user = req.body.user
+    console.log(moneyValue,user);
+    (async function(){
+        await update(usersModel,{user:user},{$inc:{money:moneyValue}})
+        res.send({})
+    })()
+})
+
+//读取积分
+router.post("/readPoint",(req, res) => {
+    let user = req.body.user
+    (async function(){
+        let result = await find(usersModel,{user:user},{_id:0,point:1})
+        if(result.err) console.log(result.err)
+        else res.send(result)
+    })()
+})
+//读取金币
+router.post("/readMoney",(req, res) => {
+    let user = req.body.user
+    (async function(){
+        let result = await find(usersModel,{user:user},{_id:0,money:1})
+        if(result.err) console.log(result.err)
+        else res.send(result)
+    })()
+})
+
+//获取正确答案
+router.post("/getRightAnswer", (req ,res) => {
+    let roomID:number = req.body.roomID
+    let r = room.findRoom(roomID)
+    let rightAnswer = null
+    if(r) rightAnswer =  r.currentQuestion
+    res.send({rightAnswer:rightAnswer})
+})
+
+//获取商品
+router.get("/getAllProducts",(req, res) => {
+    (async function() {
+        let result = await find(productModel,{},{_id:0})
+        res.send({products:result.successful})
+    })()
+})
+
+//组队匹配
+router.post("/organizeMatch",(req, res) => {
+    let captain = req.body.user
+    let isMatch = req.body.isMatch
+    let organize = organize2Pool.getOrganize(captain)
+    if(!organize) throw new Error("organizeMatch:未找到指定队伍")
+    organize.isMatch = isMatch
+    
+    //广播队伍中的用户取消或开始匹配
+    for(let organizeUser of organize.getOrganize()){
+        if(organizeUser != organize.getOrganize()[0])sendMsg(organizeUser.user,"","",`Match${isMatch}`)
+    }
+
+    res.send({})
+})
+
+//购买商品
+router.post("/buyProduct",async (req, res) => {
+    //购买的用户
+    let user = req.body.user
+    //话费的金额
+    let value = req.body.money
+    //商品的名称
+    let name = req.body.name
+    //返回的对象
+    let returnObj:ReturnData = {}
+
+    let result = await find(usersModel,{user:user},{money:1})
+    let money = result.successful[0].money
+    //检查是否有足够的金额
+    if(money - value < 0) returnObj.err = "没有足够的金额"
+    else {
+        await update(
+            usersModel,
+            {user:user},
+            {
+                $inc:{money:-value},
+                $push:{tools:name}
+            }
+        )
+        returnObj.successful = ""
+    }
+    
+    res.send(returnObj)
 })
 
 router.get("/",(req,res) => {

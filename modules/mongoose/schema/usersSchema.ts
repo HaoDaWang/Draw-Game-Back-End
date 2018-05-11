@@ -1,4 +1,7 @@
 import * as mongoose from 'mongoose';
+import { Organize2 } from '../../organize2/organize2';
+import { Config } from '../../../interfaces/config.type';
+const config:Config = require("../../config/config.json")
 
 export let usersSchema:mongoose.Schema = new mongoose.Schema({
     user:{type:String}, //用户名
@@ -10,9 +13,32 @@ export let usersSchema:mongoose.Schema = new mongoose.Schema({
     headImg:{type:String,default:"/files/headImg/headImg.jpg"}, //头像路径
     money:{type:Number,default:0}, //金币
     sex:{type:String, default:"unknow"}, //性别
-    age:{type:Number, default:-1},
-    tools:{type:{
-        paint:{type:Array,default:[]} //画笔集
-    }},
+    age:{type:Number, default:-1},    //年龄
+    tools:{type:Array, default:[
+        {
+            name:"橡皮擦",
+            img:`${config.PRODUCT_PATH}eraser.png`,
+            price:-1,
+            func:JSON.stringify({func:() => {}})
+        },
+        {
+            name:"铅笔",
+            img:`${config.PRODUCT_PATH}pencil.png`,
+            price:-1,
+            func:JSON.stringify({func:() => {}})
+        },
+        {
+            name:"刷子",
+            img:`${config.PRODUCT_PATH}make.png`,
+            price:-1,
+            func:JSON.stringify({func:() => {}})
+        },
+        {
+            name:"彩虹笔",
+            img:`${config.PRODUCT_PATH}rainbow.png`,
+            price:-1,
+            func:JSON.stringify({func:() => {}})
+        }
+    ]},    //购买的工具
     records:{type:Array,default:[]} //战绩
 });

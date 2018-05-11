@@ -5,6 +5,8 @@ import { Organize2User } from "../../interfaces/organize2-user.interface";
  */
 
 export class Organize2{
+    public isMatch:boolean = false
+
     //实际维护用户组队的容器
     userArr:Organize2User[] = []
 

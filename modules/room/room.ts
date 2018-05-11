@@ -1,8 +1,8 @@
 import { Room } from "../../interfaces/room.interface";
 
 class Rooms{
-    public roomID:number = 0
-    rooms:Array<Room> = []
+    private roomID:number = 0
+    private rooms:Array<Room> = []
 
     //根据roomID查找room对象
     findRoom(roomID:number):Room | null{
@@ -18,6 +18,10 @@ class Rooms{
 
     getRooms(){
         return this.rooms
+    }
+
+    getRoomID(){
+        return this.roomID++
     }
 }
 

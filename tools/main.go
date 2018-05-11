@@ -23,6 +23,9 @@ type Question struct {
 //储存问题的容器
 var container []Question = make([]Question,0,0)
 
+/**
+* 功能：爬取指定网站的题目
+*/
 func main(){
 	err := getQuestion()
 	checkErr(err)

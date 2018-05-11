@@ -33,5 +33,3 @@ export class GameQuestion{
         return this.currentQuestion;
     }
 }
-
-export let gq:GameQuestion = new GameQuestion();
