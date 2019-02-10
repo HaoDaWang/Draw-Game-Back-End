@@ -151,9 +151,9 @@ socketServer.on("connection", socket => {
 
     //通知房间内用户更新canvas
     socket.on("changeCanvas", (data: ChangeCanvas) => {
-        console.log(rooms);
         let r: Room = room.findRoom(data.roomID) as Room;
         let users: Organize2User[] = r.users;
+        console.log(users.length)
         for (let obj of users) {
             let s = userMap.getUserMap().get(obj.user)
             if(!s) throw new Error("房间内更新canvas:没有找到指定用户")

@@ -22,6 +22,7 @@ import { userCanDraw } from '../modules/userCanDraw/userCanDraw';
 import { productModel } from '../modules/mongoose/model/productModel';
 import { personPool } from '../modules/person/personPool';
 import { Room } from '../interfaces/room.interface';
+import { match2 } from '../modules/match2/match2';
 const config:Config = require("../modules/config/config.json")
 const router:Router = express.Router();
 
@@ -301,15 +302,18 @@ router.post("/addUserInOrganize2",(req, res) => {
     organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
     res.send({organize:organize.getOrganize()})
 })
+
 //从队伍将用户删除
 router.post("/removeUserInOrganize2",(req, res) => {
     console.log(`将用户 ${req.body.user.user} 从队伍中删除`)
     let organize = addAndRemove(req, "remove")
-    if(organize) {
-        organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
-        res.send({organize:organize.getOrganize()})
+    if(!organize) {
+        res.send({})
+        return
     }
-    res.send({organize:[]})
+    console.log(organize.getOrganize())
+    organize2Boardcast(organize,true,"",organize.getOrganize(),"updateOrganize")
+    res.send({organize:organize.getOrganize()})
 })
 
 //销毁队伍
@@ -392,7 +396,8 @@ router.post("/organizeMatch",(req, res) => {
     for(let organizeUser of organize.getOrganize()){
         if(organizeUser != organize.getOrganize()[0])sendMsg(organizeUser.user,"","",`Match${isMatch}`)
     }
-
+    
+    match2.judge()
     res.send({})
 })
 
@@ -406,6 +411,13 @@ router.post("/buyProduct",async (req, res) => {
     let name = req.body.name
     //返回的对象
     let returnObj:ReturnData = {}
+    
+    let t = await find(usersModel, {user:user},{tools:1})
+    if(t.successful[0].tools.indexOf(name) != -1) {
+        res.send({err:"已经购买了此商品"})
+    }
+    
+    let toolsData = (await find(productModel, {name:name})).successful[0]
 
     let result = await find(usersModel,{user:user},{money:1})
     let money = result.successful[0].money
@@ -417,7 +429,12 @@ router.post("/buyProduct",async (req, res) => {
             {user:user},
             {
                 $inc:{money:-value},
-                $push:{tools:name}
+                $push:{tools:{
+                    name:toolsData.name,
+                    img:toolsData.img,
+                    use:toolsData.use,
+                    price:toolsData.price
+                }}
             }
         )
         returnObj.successful = ""
@@ -427,7 +444,7 @@ router.post("/buyProduct",async (req, res) => {
 })
 
 router.get("/",(req,res) => {
-    res.send("欢迎来到火星")
+    res.sendFile("../public/index.html")
 });
 
 export = router;

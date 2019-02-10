@@ -12,10 +12,17 @@ export let initFunc = async function(){
     await update(usersModel, {}, {$set:{isLine:false}})
 
     //初始化商品
-    await update(productModel, {name:"铅笔"},{$set:{
-        name:"铅笔",
-        img:"/files/products/pencil.png",
+    await update(productModel, {name:"彩虹笔"},{$set:{
+        name:"彩虹笔",
+        img:`${config.PRODUCT_PATH}rainbow.png`,
         price:100,
-        func:JSON.stringify({func:() => console.log("i'm a func")})
+        use:"rainbow"
+    }},{upsert:true})
+
+    await update(productModel, {name:"空心笔"},{$set:{
+        name:"空心笔",
+        img:`${config.PRODUCT_PATH}hollow.png`,
+        price:0,
+        use:"hollow"
     }},{upsert:true})
 }

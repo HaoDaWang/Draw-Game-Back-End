@@ -15,9 +15,9 @@ export let createRoom = function (tmpArr:Organize2User[]) {
     for (let v of tmpArr) {
         socketQueue.push(userMap.getUserMap().get(v.user) as SocketIO.Socket)
     }
-
+    console.log("-----------------tmpArr" + tmpArr.length )
     let arr: ReadyQueueBody[] = []
-    //封装准备队列的对象
+    //封装准备队列的对象ß
     for (let obj of tmpArr) {
         arr.push({
             user: obj.user,

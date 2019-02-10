@@ -4,7 +4,7 @@
     ],
     "MATCH_COUNT":3, 
     "MIN_POINT":15,
-    "MAX_TIME":3000,
+    "MAX_TIME":60,
     "NEXT_GAME_TIME":3,
     "PRODUCT_PATH":"/files/products/"
 }

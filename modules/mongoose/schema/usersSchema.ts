@@ -18,26 +18,17 @@ export let usersSchema:mongoose.Schema = new mongoose.Schema({
         {
             name:"橡皮擦",
             img:`${config.PRODUCT_PATH}eraser.png`,
-            price:-1,
-            func:JSON.stringify({func:() => {}})
+            price:-1
         },
         {
             name:"铅笔",
             img:`${config.PRODUCT_PATH}pencil.png`,
-            price:-1,
-            func:JSON.stringify({func:() => {}})
+            price:-1
         },
         {
             name:"刷子",
             img:`${config.PRODUCT_PATH}make.png`,
-            price:-1,
-            func:JSON.stringify({func:() => {}})
-        },
-        {
-            name:"彩虹笔",
-            img:`${config.PRODUCT_PATH}rainbow.png`,
-            price:-1,
-            func:JSON.stringify({func:() => {}})
+            price:-1
         }
     ]},    //购买的工具
     records:{type:Array,default:[]} //战绩

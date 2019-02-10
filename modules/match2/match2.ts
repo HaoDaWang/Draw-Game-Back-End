@@ -52,7 +52,8 @@ class Match2 {
         if(arr.length < config.MATCH_COUNT) return
         while(arr.length > 0){
             if(tmpArr.length == config.MATCH_COUNT) break
-            tmpArr.push(arr.pop() as Organize2User)
+            let u = arr.pop()
+            tmpArr.push(u as Organize2User)
         }
 
         createRoom(tmpArr)

@@ -16,7 +16,12 @@ export class Organize2{
     }
     //删除用户
     removeUser(user:Organize2User){
-        let index = this.userArr.indexOf(user)
+        let index:any
+        for(let i in this.userArr){
+            if(this.userArr[i].user == user.user) {
+                index = i
+            }
+        }
         this.userArr.splice(index,1)
     }
     //获取队伍
